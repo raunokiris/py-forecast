@@ -9,11 +9,11 @@ Live demo: http://178.62.248.191/ilmaennustus
 ![autocomplete](example_screenshots/autocomplete.png)
 
 ## Sõltuvused
-[pandas](https://pandas.pydata.org/) (```pip install pandas```) 
-[numpy](http://www.numpy.org/) (```pip install numpy```) 
-[bokeh](https://bokeh.pydata.org/en/latest/) (```pip install bokeh```) 
-[requests](http://docs.python-requests.org/en/master/) (```pip install requests```)
-[requests_cache](https://github.com/reclosedev/requests-cache) (```pip install requests_cache```)
+[pandas](https://pandas.pydata.org/) (```pip install pandas```)  
+[numpy](http://www.numpy.org/) (```pip install numpy```)  
+[bokeh](https://bokeh.pydata.org/en/latest/) (```pip install bokeh```)  
+[requests](http://docs.python-requests.org/en/master/) (```pip install requests```)  
+[requests_cache](https://github.com/reclosedev/requests-cache) (```pip install requests_cache```)  
 
 ## Lokaalselt käivitamine
 ```sh
