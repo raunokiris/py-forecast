@@ -5,6 +5,8 @@ Live demo: http://178.62.248.191/ilmaennustus
 ## Näidispildid
 ### Tallinn
 ![tallinn](example_screenshots/tallinn.png)
+### Tallinn (osaliselt alla nulli)
+![tallinn_sz](example_screenshots/tallinn_semi_subzero.png)
 ### Autocomplete
 ![autocomplete](example_screenshots/autocomplete.png)
 
@@ -15,8 +17,8 @@ Live demo: http://178.62.248.191/ilmaennustus
 [requests](http://docs.python-requests.org/en/master/) (```pip install requests```)  
 [requests_cache](https://github.com/reclosedev/requests-cache) (```pip install requests_cache```)  
 
-## Lokaalselt käivitamine
+## Lokaalne käivitamine (terminalist)
 ```sh
-$ bokeh serve forecast.py --show
+$ bokeh serve forecast_visualize.py --show
 ```
 NB! Lokaalsel käivitamisel ei kuvata pilvisuse ikoone!
