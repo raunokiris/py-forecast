@@ -13,15 +13,41 @@ import midnights
 from default_data import CITY_MAP
 
 
-def get_precipitation_bar_width() -> float:
+def update() -> None:
     """
-    Returns a responsive size to precipitation bars.
-    :return: float
+    Updates the data source based on the city_picker (i.e. user input) value and changes plot title.
+    :return: None
     """
-    global source
-    mindate = min(source.data['start'])
-    maxdate = max(source.data['start'])
-    return 0.8 * (maxdate - mindate).total_seconds() * 1000 / len(source.data['start'])
+    global source, city, temp_plus_dominates
+    input_city = city_picker.value
+    city = City(input_city)
+    forecast = city.union
+
+    temp_emhi = jsonize_values(forecast["temperature_emhi"])
+    temp_emhi_plus, temp_emhi_minus = split_temperatures(temp_emhi)
+
+    temp_yrno = jsonize_values(forecast["temperature_yrno"])
+    temp_yrno_plus, temp_yrno_minus = split_temperatures(temp_yrno)
+
+    temp_plus_dominates = {  # Compares the amount of ~isnans (i.e. isnotnans), i.e. amount of +/- temps.
+        "emhi": sum(~np.isnan(temp_emhi_plus)) >= sum(~np.isnan(temp_emhi_minus)),  # True/False
+        "yrno": sum(~np.isnan(temp_yrno_plus)) >= sum(~np.isnan(temp_yrno_minus))  # True/False
+    }
+    
+    source.data = dict(
+        start=jsonize_values(forecast["start"]),
+        temp_emhi=temp_emhi,
+        temp_emhi_plus=temp_emhi_plus,
+        temp_emhi_minus=temp_emhi_minus,
+        precipitation_emhi=jsonize_values(forecast["precipitation_emhi"]),
+        temp_yrno=temp_yrno,
+        temp_yrno_plus=temp_yrno_plus,
+        temp_yrno_minus=temp_yrno_minus,
+        precipitation_yrno=jsonize_values(forecast["precipitation_yrno"]),
+        symbol_yrno=jsonize_values(forecast["symbol_yrno"]),
+        symbol_emhi=jsonize_values(forecast["symbol_emhi"])
+    )
+    f.title.text = "Ilmaennustus - {}".format(input_city)
 
 
 def jsonize_values(series) -> list:
@@ -84,37 +110,35 @@ def split_temperatures(temperatures):
     return plus_temps, minus_temps
 
 
-def update() -> None:
+def get_precipitation_bar_width() -> float:
     """
-    Updates the data source based on the city_picker (i.e. user input) value and changes plot title.
-    :return: None
+    Returns a responsive size to precipitation bars.
+    :return: float
     """
     global source
-    global city
-    input_city = city_picker.value
-    city = City(input_city)
-    forecast = city.union
+    mindate = min(source.data['start'])
+    maxdate = max(source.data['start'])
+    return 0.8 * (maxdate - mindate).total_seconds() * 1000 / len(source.data['start'])
 
-    temp_emhi = jsonize_values(forecast["temperature_emhi"])
-    temp_emhi_plus, temp_emhi_minus = split_temperatures(temp_emhi)
 
-    temp_yrno = jsonize_values(forecast["temperature_yrno"])
-    temp_yrno_plus, temp_yrno_minus = split_temperatures(temp_yrno)
-
-    source.data = dict(
-        start=jsonize_values(forecast["start"]),
-        temp_emhi=temp_emhi,
-        temp_emhi_plus=temp_emhi_plus,
-        temp_emhi_minus=temp_emhi_minus,
-        precipitation_emhi=jsonize_values(forecast["precipitation_emhi"]),
-        temp_yrno=temp_yrno,
-        temp_yrno_plus=temp_yrno_plus,
-        temp_yrno_minus=temp_yrno_minus,
-        precipitation_yrno=jsonize_values(forecast["precipitation_yrno"]),
-        symbol_yrno=jsonize_values(forecast["symbol_yrno"]),
-        symbol_emhi=jsonize_values(forecast["symbol_emhi"])
-    )
-    f.title.text = "Ilmaennustus - {}".format(input_city)
+def get_line_position_and_color(provider: str):
+    """
+    Returns list of two dictionaries with line position (source, x, y) and color. The order of dictionaries in
+    the returned list is based on their plotting order, i.e. dominate temperatures (i.e. above or below zero).
+    If temperatures above zero dominate, the data regarding "minus line" must be plotted first, thus the data
+    of "minus line" will be returned first. Result will be used for unpacking values to line figures.
+    :param provider: str in ["emhi", "yrno"]
+    :return: [{"y": ..., "x": ..., "source": ..., "color": ...}, same]
+    """
+    global source
+    defaults = {"x": "start", "source": source}
+    y_and_color_based_on_plus_dominance = {
+        True: {"1y": "minus", "1c": "#48AFE8", "2y": "plus", "2c": "firebrick"},  # True if plus dominates
+        False: {"1y": "plus", "1c": "firebrick", "2y": "minus", "2c": "#48AFE8"},  # False if plus does not dominate
+    }
+    vmap = y_and_color_based_on_plus_dominance[temp_plus_dominates[provider]]
+    return [{"y": "temp_{}_{}".format(provider, vmap["1y"]), "color": vmap["1c"], **defaults},
+            {"y": "temp_{}_{}".format(provider, vmap["2y"]), "color": vmap["2c"], **defaults}]
 
 
 city_picker = AutocompleteInput(value="Tartu", title="\n",
@@ -145,22 +169,21 @@ f.toolbar_location = None
 f.toolbar.logo = None
 f.toolbar.active_drag = None
 
+
 # ADD GLYPHS
 # EMHI preciptitation vbar + EMHI above 0 (firebrick) line + EMHI below 0 (#48AFE8) line
 f.vbar(x="start", top="precipitation_emhi", bottom=0, width=get_precipitation_bar_width(),
        source=source, y_range_name="precip", alpha=0.5, legend="Ilmateenistus")
-f.line(x="start", y="temp"
-                    "_emhi_plus", source=source, line_width=5, color="firebrick", legend="Ilmateenistus")
-f.line(x="start", y="temp_emhi_minus", source=source, line_width=5, color="#48AFE8", legend="Ilmateenistus")
+line_pos_and_color = get_line_position_and_color("emhi")
+f.line(**line_pos_and_color[0], legend="Ilmateenistus", line_width=5)
+f.line(**line_pos_and_color[1], legend="Ilmateenistus", line_width=5)
 
 # YRNO preciptitation vbar + YRNO above 0 (firebrick) line + YRNO below 0 (#48AFE8) line
 f.vbar(x="start", top="precipitation_yrno", bottom=0, width=get_precipitation_bar_width(),
-       source=source, y_range_name="precip", alpha=0.5,
-       color="DarkCyan", legend="yr.no")
-f.line(x="start", y="temp_yrno_plus", source=source, line_dash="dashed", line_dash_offset=5,
-       line_width=5, color="firebrick", legend="yr.no")
-f.line(x="start", y="temp_yrno_minus", source=source, line_dash="dashed", line_dash_offset=5,
-       line_width=5, color="#48AFE8", legend="yr.no")
+       source=source, y_range_name="precip", alpha=0.5, color="DarkCyan", legend="yr.no")
+line_pos_and_color = get_line_position_and_color("yrno")
+f.line(**line_pos_and_color[0], legend="yr.no", line_dash="dashed", line_dash_offset=5, line_width=5)
+f.line(**line_pos_and_color[1], legend="yr.no", line_dash="dashed", line_dash_offset=5, line_width=5)
 
 
 # ADD PRECIPITATION LABELS
